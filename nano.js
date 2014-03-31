@@ -100,13 +100,6 @@ function xmlHTTPRequestObject() {
 }
 
 function encodeHTML(code){
-	code=escape(code);
-	code=code.replace(/\//g,"%2F");
-	code=code.replace(/\?/g,"%3F");
-	code=code.replace(/=/g,"%3D");
-	code=code.replace(/&/g,"%26");
-	code=code.replace(/@/g,"%40");
-	code=code.replace(/\+/g,"%2B");
-	return code;
+	return escape(code).replace(/\//g,"%2F").replace(/\?/g,"%3F").replace(/=/g,"%3D").replace(/&/g,"%26").replace(/@/g,"%40").replace(/\+/g,"%2B");
 }
 
