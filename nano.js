@@ -2,41 +2,64 @@
 Nano Ajax Library
 (c) Schien Dong, Antradar Software Inc.
 
+License: www.antradar.com/license.php
 Documentation: www.antradar.com/docs-nano-ajax-manual
+
+ver p3.2
 */
 
 function gid(d){return document.getElementById(d);}
 
 function hb(){var now=new Date(); var hb=now.getTime();return hb;}
 
-function ajxb(u){
+function ajxb(u,data){
+	if (document.wssid) u=u+'&wssid_='+document.wssid;
+	var method='POST'; if (!data) method='GET';
 	var rq=xmlHTTPRequestObject();
 	rq.open('GET',u+'&hb='+hb(),false);
-	rq.send(null);
-	if (typeof(rq.responseText)=='unknown') return '';
-	else return rq.responseText;
+	rq.setRequestHeader('Content-Type','application/x-www-form-urlencoded; charset=UTF-8');
+	rq.send(data);
+	return rq.responseText;	
 }
 
-function ajxnb(rq,u,f){
+function ajxnb(rq,u,f,data){
+	if (document.wssid) u=u+'&wssid_='+document.wssid;	
 	rq.onreadystatechange=f;
-	rq.open('GET',u+'&hb='+hb(),true);
-	rq.send(null);  	
+	var method='POST'; if (!data) method='GET';
+	rq.open(method,u+'&hb='+hb(),true);
+	rq.setRequestHeader('Content-Type','application/x-www-form-urlencoded; charset=UTF-8');
+	rq.send(data);  	
 }
 
-function ajxpgn(c,u,d,e,prepend,callback){
+function ajxpgn(c,u,d,e,data,callback,slowtimer,runonce){
 	var ct=gid(c);
 	if (ct==null) return;
-	if (prepend==null) prepend='';
-	
+	if (runonce&&ct.reqobj!=null) return;
 	var f=function(c){return function(){
 		if (rq.readyState==4){
 			if (ct.reqobj!=null){
-				ct.reqobj=null;
+				ct.reqobj=null; 
 			}
+			
+			if (ct.abortflag) {ct.abortflag=null;return;}
+
+			var apperror=rq.getResponseHeader('apperror');
+			if (apperror!=null&&apperror!=''){
+				var errfunc=rq.getResponseHeader('errfunc');
+				if (callback&&callback.length>0){
+					callback[1](errfunc,decodeURIComponent(apperror),rq);					
+				} else {
+					if (errfunc!=null&&errfunc!=''&&self[errfunc.toLowerCase()]){
+						self[errfunc.toLowerCase()](decodeURIComponent(apperror));
+					} else alert(decodeURIComponent(apperror));
+				}
+				
+				return;	
+			}
+
 			ct.innerHTML=rq.responseText;
 			
 			if (d) ct.style.display='block';
-			
 			
 			if (e){
 				var i;
@@ -45,15 +68,17 @@ function ajxpgn(c,u,d,e,prepend,callback){
 				scripts=null;
 			}
 			
-			if (callback) callback();
+			if (callback){
+				if (typeof(callback)=='object'&&callback.length>0) callback[0](rq); else callback(rq);
+			}
 		}	  
 	}}	
 	
 	var rq=xmlHTTPRequestObject();
 	
-	if (ct.reqobj!=null) ct.reqobj.abort();
+	if (ct.reqobj!=null) {ct.abortflag=1;ct.reqobj.abort();}
 	ct.reqobj=rq;
-	ajxnb(rq,u,f(c));
+	ajxnb(rq,u,f(c),data);
 }
 
 
@@ -77,10 +102,14 @@ function xajx(url){
 	}
 	
 	var xjs=document.xjs_transport;
-	xjs.innerHTML='';
 	var rq=document.createElement('script');
 	rq.setAttribute('src',url);
-	xjs.appendChild(rq);  
+	xjs.appendChild(rq);
+	
+	if (xjs.gc) clearTimeout(xjs.gc);
+	xjs.gc=setTimeout(function(){
+		xjs.innerHTML='';
+	},3000);  
 }
 
 
@@ -100,6 +129,6 @@ function xmlHTTPRequestObject() {
 }
 
 function encodeHTML(code){
-	return escape(code).replace(/\//g,"%2F").replace(/\?/g,"%3F").replace(/=/g,"%3D").replace(/&/g,"%26").replace(/@/g,"%40").replace(/\+/g,"%2B");
+	if (!self.encodeURIComponent) {alert('Unsupported browser'); return;}
+	return encodeURIComponent(code);
 }
-
